@@ -321,8 +321,15 @@ export const backendApi = {
       locationId: number;
       reason: string;
       notes?: string;
-      items: Array<{ productId: number; countedQuantity: number }>;
-    }): Promise<BackendDocument> => apiClient.post<BackendDocument>('/adjustments', data),
+      items: Array<{ productId: number; physicalQuantity?: number; countedQuantity?: number }>;
+    }): Promise<BackendDocument> => {
+      const items = data.items.map((it) => ({
+        productId: it.productId,
+        physicalQuantity: it.physicalQuantity ?? it.countedQuantity ?? 0,
+        countedQuantity: it.countedQuantity ?? it.physicalQuantity ?? 0,
+      }));
+      return apiClient.post<BackendDocument>('/adjustments', { ...data, items });
+    },
     validate: (docId: string): Promise<BackendDocument> =>
       apiClient.patch<BackendDocument>(`/adjustments/${docId}/validate`),
     cancel: (docId: string): Promise<BackendDocument> =>

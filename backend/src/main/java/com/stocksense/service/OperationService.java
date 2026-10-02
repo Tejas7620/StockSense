@@ -34,6 +34,8 @@ public class OperationService {
     private final StockService stockService;
     private final ReferenceGeneratorService referenceGeneratorService;
     private final UserRepository userRepository;
+    private final AuditService auditService;
+    private final NotificationService notificationService;
 
     // ========================
     // RECEIPT OPERATIONS
@@ -64,6 +66,10 @@ public class OperationService {
                     .build();
             moves.add(stockMoveRepository.save(move));
         }
+
+        auditService.record("CREATE_RECEIPT", "RECEIPT", documentId.toString(),
+                currentUser != null ? currentUser.getEmail() : "system",
+                "Created receipt " + reference + " with " + moves.size() + " lines");
 
         log.info("Created RECEIPT {} with {} lines", reference, moves.size());
         return InventoryMapper.toDocumentResponse(moves);
@@ -120,7 +126,14 @@ public class OperationService {
     @Transactional
     public DocumentResponse validateReceipt(UUID documentId, User currentUser) {
         List<StockMove> moves = getDocumentMoves(documentId);
-        validateAllStatus(moves, MoveStatus.READY, "Only READY receipts can be validated");
+        for (StockMove move : moves) {
+            if (move.getStatus() == MoveStatus.DONE) {
+                throw new InvalidStateTransitionException("Receipt is already validated (DONE).");
+            }
+            if (move.getStatus() != MoveStatus.READY && move.getStatus() != MoveStatus.DRAFT) {
+                throw new InvalidStateTransitionException("Only DRAFT or READY receipts can be validated. Current status: " + move.getStatus());
+            }
+        }
 
         for (StockMove move : moves) {
             // Increase stock at destination
@@ -132,7 +145,15 @@ public class OperationService {
         }
         stockMoveRepository.saveAll(moves);
 
-        log.info("Validated RECEIPT {} — stock updated", moves.get(0).getReference());
+        String ref = moves.get(0).getReference();
+        auditService.record("VALIDATE_RECEIPT", "RECEIPT", documentId.toString(),
+                currentUser != null ? currentUser.getEmail() : "system",
+                "Validated receipt " + ref);
+        notificationService.notify("Receipt Validated",
+                String.format("Receipt %s has been received into inventory.", ref),
+                "RECEIPT_VALIDATED", "receipts");
+
+        log.info("Validated RECEIPT {} — stock updated", ref);
         return InventoryMapper.toDocumentResponse(moves);
     }
 
@@ -189,6 +210,10 @@ public class OperationService {
         for (int i = 0; i < response.getLines().size(); i++) {
             response.getLines().get(i).setIsShort(shortFlags.get(i));
         }
+
+        auditService.record("CREATE_DELIVERY", "DELIVERY", documentId.toString(),
+                currentUser != null ? currentUser.getEmail() : "system",
+                "Created delivery " + reference + " with " + moves.size() + " lines (" + finalStatus + ")");
 
         log.info("Created DELIVERY {} with status {} ({} lines)", reference, finalStatus, moves.size());
         return response;
@@ -300,7 +325,15 @@ public class OperationService {
         }
         stockMoveRepository.saveAll(moves);
 
-        log.info("Validated DELIVERY {} — stock decremented", moves.get(0).getReference());
+        String ref = moves.get(0).getReference();
+        auditService.record("VALIDATE_DELIVERY", "DELIVERY", documentId.toString(),
+                currentUser != null ? currentUser.getEmail() : "system",
+                "Validated delivery " + ref);
+        notificationService.notify("Delivery Dispatched",
+                String.format("Delivery %s has been dispatched from warehouse.", ref),
+                "DELIVERY_VALIDATED", "deliveries");
+
+        log.info("Validated DELIVERY {} — stock decremented", ref);
         return InventoryMapper.toDocumentResponse(moves);
     }
 
@@ -339,6 +372,10 @@ public class OperationService {
                     .build();
             moves.add(stockMoveRepository.save(move));
         }
+
+        auditService.record("CREATE_TRANSFER", "INTERNAL", documentId.toString(),
+                currentUser != null ? currentUser.getEmail() : "system",
+                "Created transfer " + reference + " with " + moves.size() + " lines");
 
         log.info("Created TRANSFER {} with {} lines", reference, moves.size());
         return InventoryMapper.toDocumentResponse(moves);
@@ -386,7 +423,14 @@ public class OperationService {
     @Transactional
     public DocumentResponse validateTransfer(UUID documentId, User currentUser) {
         List<StockMove> moves = getDocumentMoves(documentId);
-        validateAllStatus(moves, MoveStatus.DRAFT, "Only DRAFT transfers can be validated");
+        for (StockMove move : moves) {
+            if (move.getStatus() == MoveStatus.DONE) {
+                throw new InvalidStateTransitionException("Transfer is already validated (DONE).");
+            }
+            if (move.getStatus() != MoveStatus.READY && move.getStatus() != MoveStatus.DRAFT) {
+                throw new InvalidStateTransitionException("Only DRAFT or READY transfers can be validated. Current status: " + move.getStatus());
+            }
+        }
 
         for (StockMove move : moves) {
             // Decrease source, increase destination — same transaction
@@ -402,7 +446,15 @@ public class OperationService {
         }
         stockMoveRepository.saveAll(moves);
 
-        log.info("Validated TRANSFER {} — stock moved", moves.get(0).getReference());
+        String ref = moves.get(0).getReference();
+        auditService.record("VALIDATE_TRANSFER", "INTERNAL", documentId.toString(),
+                currentUser != null ? currentUser.getEmail() : "system",
+                "Validated internal transfer " + ref);
+        notificationService.notify("Transfer Completed",
+                String.format("Internal transfer %s has completed successfully.", ref),
+                "TRANSFER_COMPLETED", "transfers");
+
+        log.info("Validated TRANSFER {} — stock moved", ref);
         return InventoryMapper.toDocumentResponse(moves);
     }
 
@@ -439,6 +491,10 @@ public class OperationService {
             moves.add(stockMoveRepository.save(move));
         }
 
+        auditService.record("CREATE_ADJUSTMENT", "ADJUSTMENT", documentId.toString(),
+                currentUser != null ? currentUser.getEmail() : "system",
+                "Created adjustment " + reference + " with " + moves.size() + " lines");
+
         log.info("Created ADJUSTMENT {} with {} lines", reference, moves.size());
         return InventoryMapper.toDocumentResponse(moves);
     }
@@ -470,7 +526,15 @@ public class OperationService {
         }
         stockMoveRepository.saveAll(moves);
 
-        log.info("Validated ADJUSTMENT {} — stock adjusted", moves.get(0).getReference());
+        String ref = moves.get(0).getReference();
+        auditService.record("VALIDATE_ADJUSTMENT", "ADJUSTMENT", documentId.toString(),
+                currentUser != null ? currentUser.getEmail() : "system",
+                "Validated stock adjustment " + ref);
+        notificationService.notify("Adjustment Applied",
+                String.format("Stock adjustment %s has been applied and stock reconciled.", ref),
+                "ADJUSTMENT_COMPLETED", "adjustments");
+
+        log.info("Validated ADJUSTMENT {} — stock adjusted", ref);
         return InventoryMapper.toDocumentResponse(moves);
     }
 
@@ -679,8 +743,12 @@ public class OperationService {
     }
 
     private void validateAdjustmentReason(String reason) {
+        if (reason == null) {
+            throw new IllegalArgumentException("Adjustment reason cannot be null");
+        }
+        String normalized = reason.trim().toUpperCase().replace(" ", "_").replace("-", "_");
         Set<String> validReasons = Set.of("DAMAGED", "MISSING", "MISPLACED", "COUNTING_ERROR", "OTHER");
-        if (!validReasons.contains(reason.toUpperCase())) {
+        if (!validReasons.contains(normalized)) {
             throw new IllegalArgumentException(
                     "Invalid adjustment reason: " + reason + ". Must be one of: " + validReasons);
         }

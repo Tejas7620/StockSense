@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Bell, AlertTriangle, AlertCircle, Truck, ArrowDownToLine, Check, CheckCheck } from 'lucide-react';
+import { X, Bell, AlertTriangle, AlertCircle, Truck, ArrowDownToLine, CheckCheck } from 'lucide-react';
 import { Notification } from '../types';
 import { RouteId } from './Sidebar';
 

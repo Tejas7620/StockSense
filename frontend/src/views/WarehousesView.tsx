@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Building2, Plus, MapPin, CheckCircle2, X } from 'lucide-react';
+import { Building2, Plus, MapPin, X } from 'lucide-react';
 import { inventoryEngine } from '../services/inventoryEngine';
 import { useToast } from '../components/Toast';
 import { RouteId } from '../components/Sidebar';
 
 interface WarehousesViewProps {
-  onNavigate: (route: RouteId) => void;
+  onNavigate?: (route: RouteId) => void;
 }
 
 export const WarehousesView: React.FC<WarehousesViewProps> = ({ onNavigate }) => {
@@ -22,28 +22,12 @@ export const WarehousesView: React.FC<WarehousesViewProps> = ({ onNavigate }) =>
       return;
     }
 
-    const state = inventoryEngine.getState();
-    const newWh = {
-      id: `wh-${Date.now()}`,
-      code: formData.code.toUpperCase(),
-      name: formData.name,
+    const newWh = inventoryEngine.addWarehouse({
+      name: formData.name.trim(),
+      code: formData.code.trim(),
       address: formData.address || 'Standard logistics facility',
-      locationCount: 1,
-      status: 'Active' as const,
-    };
-    state.warehouses.push(newWh);
-    // Add default rack
-    state.locations.push({
-      id: `loc-${Date.now()}`,
-      warehouseId: newWh.id,
-      warehouseName: newWh.name,
-      code: 'RACK-1',
-      name: 'Default Rack 1',
-      type: 'Internal',
-      status: 'Active',
     });
 
-    inventoryEngine.resetToDefault(); // trigger re-render
     showToast('success', 'Warehouse Added', `Warehouse ${newWh.name} (${newWh.code}) created successfully.`);
     setIsModalOpen(false);
     setFormData({ name: '', code: '', address: '' });
@@ -128,7 +112,7 @@ export const WarehousesView: React.FC<WarehousesViewProps> = ({ onNavigate }) =>
 
               <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                 <button
-                  onClick={() => onNavigate('stock-location')}
+                  onClick={() => onNavigate?.('stock-location')}
                   className="btn btn-sm btn-outline-purple"
                   style={{ flex: 1 }}
                 >

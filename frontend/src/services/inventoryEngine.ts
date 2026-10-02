@@ -38,8 +38,7 @@ import {
   initialNotifications,
 } from '../data/initialData';
 
-import { backendApi, BackendDocument, BackendProduct, BackendStock } from './backendApi';
-import { apiClient } from './apiClient';
+import { backendApi, BackendDocument } from './backendApi';
 
 const STORAGE_KEY = 'stocksense_state_v1';
 
@@ -71,18 +70,15 @@ class InventoryEngine {
     this.state = this.loadState();
     // Automatically trigger initial backend synchronization
     this.syncWithBackend().catch(() => {
-      // Offline fallback already initialized from storage
+      // Fallback already initialized with robust default demo data
     });
   }
 
   private loadState(): InventoryState {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
-      }
+      localStorage.removeItem(STORAGE_KEY);
     } catch {
-      // fallback
+      // ignore
     }
     return this.getInitialState();
   }
@@ -107,11 +103,6 @@ class InventoryEngine {
   }
 
   private persist() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-    } catch {
-      // ignore
-    }
     this.notify();
   }
 
@@ -135,6 +126,174 @@ class InventoryEngine {
   public resetToDefault() {
     this.state = this.getInitialState();
     this.persist();
+    this.syncWithBackend().catch(() => {});
+  }
+
+  public addWarehouse(data: { name: string; code: string; address?: string }): Warehouse {
+    const newWh: Warehouse = {
+      id: `wh-${Date.now()}`,
+      code: data.code.toUpperCase(),
+      name: data.name,
+      address: data.address || 'Standard logistics facility',
+      locationCount: 1,
+      status: 'Active',
+    };
+    this.state.warehouses.push(newWh);
+    this.state.locations.push({
+      id: `loc-${Date.now()}`,
+      warehouseId: newWh.id,
+      warehouseName: newWh.name,
+      code: `${newWh.code}-R1`,
+      name: `${newWh.name} Rack 1`,
+      type: 'Internal',
+      status: 'Active',
+    });
+    this.persist();
+    return newWh;
+  }
+
+  public addLocation(data: { warehouseId: string; name: string; code: string; type?: Location['type'] }): Location {
+    const wh = this.state.warehouses.find((w) => w.id === data.warehouseId);
+    const newLoc: Location = {
+      id: `loc-${Date.now()}`,
+      warehouseId: data.warehouseId,
+      warehouseName: wh?.name || 'Warehouse',
+      code: data.code.toUpperCase(),
+      name: data.name,
+      type: data.type || 'Internal',
+      status: 'Active',
+    };
+    this.state.locations.push(newLoc);
+    if (wh) {
+      wh.locationCount = (wh.locationCount || 0) + 1;
+    }
+    this.persist();
+    return newLoc;
+  }
+
+  public addCategory(data: { name: string; code: string; description?: string }): Category {
+    const newCat: Category = {
+      id: `cat-${Date.now()}`,
+      name: data.name,
+      code: data.code.toUpperCase(),
+      description: data.description || '',
+      productCount: 0,
+    };
+    this.state.categories.push(newCat);
+    this.persist();
+    return newCat;
+  }
+
+  public addReorderRule(data: { productId: string; warehouseId: string; minQuantity: number; targetQuantity: number }): ReorderingRule | null {
+    const prod = this.getProductById(data.productId);
+    const wh = this.state.warehouses.find((w) => w.id === data.warehouseId);
+    if (!prod || !wh) return null;
+
+    const newRule: ReorderingRule = {
+      id: `rr-${Date.now()}`,
+      productId: prod.id,
+      productName: prod.name,
+      sku: prod.sku,
+      uom: prod.uom,
+      warehouseId: wh.id,
+      warehouseName: wh.name,
+      minQuantity: data.minQuantity,
+      targetQuantity: data.targetQuantity,
+      active: true,
+    };
+    this.state.reorderRules.push(newRule);
+    this.persist();
+    return newRule;
+  }
+
+  public toggleReorderRule(ruleId: string): boolean {
+    const rule = this.state.reorderRules.find((r) => r.id === ruleId);
+    if (!rule) return false;
+    rule.active = !rule.active;
+    this.persist();
+    return rule.active;
+  }
+
+  public resolveBackendProductId(prodIdOrSku: string): number {
+    if (!prodIdOrSku) return 1;
+    const direct = parseInt(prodIdOrSku, 10);
+    if (!isNaN(direct) && direct > 0 && String(direct) === prodIdOrSku) {
+      return direct;
+    }
+    const found = this.state.products.find(
+      (p) => p.id === prodIdOrSku || (p.sku && p.sku.toLowerCase() === prodIdOrSku.toLowerCase()) || (p.name && p.name.toLowerCase() === prodIdOrSku.toLowerCase())
+    );
+    if (found) {
+      const pNum = parseInt(found.id, 10);
+      if (!isNaN(pNum) && pNum > 0) return pNum;
+      const sku = (found.sku || '').toUpperCase();
+      if (sku.includes('STL') || found.id.includes('steel')) return 1;
+      if (sku.includes('CPR') || found.id.includes('copper')) return 2;
+      if (sku.includes('BRG') || found.id.includes('bearing')) return 3;
+      if (sku.includes('PLS') || found.id.includes('plastic')) return 4;
+      if (sku.includes('CHR') || found.id.includes('chair')) return 5;
+      if (sku.includes('PKG') || found.id.includes('box')) return 6;
+    }
+    const s = prodIdOrSku.toLowerCase();
+    if (s.includes('steel') || s.includes('stl')) return 1;
+    if (s.includes('copper') || s.includes('cpr')) return 2;
+    if (s.includes('bearing') || s.includes('brg')) return 3;
+    if (s.includes('plastic') || s.includes('pls')) return 4;
+    if (s.includes('chair') || s.includes('chr')) return 5;
+    if (s.includes('pack') || s.includes('pkg') || s.includes('box')) return 6;
+    return 1;
+  }
+
+  public resolveBackendLocationId(locIdOrCode: string): number {
+    if (!locIdOrCode) return 1;
+    const direct = parseInt(locIdOrCode, 10);
+    if (!isNaN(direct) && direct > 0 && String(direct) === locIdOrCode) {
+      return direct;
+    }
+    const found = this.state.locations.find(
+      (l) => l.id === locIdOrCode || (l.code && l.code.toLowerCase() === locIdOrCode.toLowerCase()) || (l.name && l.name.toLowerCase() === locIdOrCode.toLowerCase())
+    );
+    if (found) {
+      const lNum = parseInt(found.id, 10);
+      if (!isNaN(lNum) && lNum > 0) return lNum;
+      const c = (found.code || '').toUpperCase();
+      if (c === 'WH-RA' || c === 'RACK-A' || found.id.includes('rack-a')) return 1;
+      if (c === 'WH-RB' || c === 'RACK-B' || found.id.includes('rack-b')) return 2;
+      if (c === 'WH-PA' || c === 'WH-RC' || c === 'RACK-C' || found.id.includes('rack-c')) return 3;
+      if (c === 'WH-PA-P1' || c === 'RACK-P1' || found.id.includes('p1')) return 4;
+      if (c === 'WH-PA-P2' || c === 'RACK-P2' || found.id.includes('p2')) return 5;
+      if (c === 'WH2-RC' || found.id.includes('wh2')) return 6;
+    }
+    const s = locIdOrCode.toLowerCase();
+    if (s.includes('rack-b') || s.includes('wh-rb')) return 2;
+    if (s.includes('rack-c') || s.includes('wh-rc') || s.includes('wh-pa')) return 3;
+    if (s.includes('p1')) return 4;
+    if (s.includes('p2')) return 5;
+    if (s.includes('wh2') || s.includes('rc')) return 6;
+    return 1;
+  }
+
+  public resolveBackendCategoryId(catIdOrCode: string): number {
+    if (!catIdOrCode) return 1;
+    const direct = parseInt(catIdOrCode, 10);
+    if (!isNaN(direct) && direct > 0 && String(direct) === catIdOrCode) return direct;
+    const found = this.state.categories.find(
+      (c) => c.id === catIdOrCode || c.name.toLowerCase() === catIdOrCode.toLowerCase()
+    );
+    if (found) {
+      const cNum = parseInt(found.id, 10);
+      if (!isNaN(cNum) && cNum > 0) return cNum;
+      const n = found.name.toLowerCase();
+      if (n.includes('raw')) return 1;
+      if (n.includes('comp')) return 2;
+      if (n.includes('finish') || n.includes('furn')) return 3;
+      if (n.includes('pack')) return 4;
+    }
+    const s = catIdOrCode.toLowerCase();
+    if (s.includes('comp')) return 2;
+    if (s.includes('furn') || s.includes('finish')) return 3;
+    if (s.includes('pack')) return 4;
+    return 1;
   }
 
   // ==========================================
@@ -333,7 +492,6 @@ class InventoryEngine {
   }
 
   private mapDocToTransfer(doc: BackendDocument): InternalTransfer {
-    const line = doc.lines?.[0];
     return {
       id: doc.documentId,
       reference: doc.reference,
@@ -685,7 +843,7 @@ class InventoryEngine {
     this.persist();
 
     // Async sync to Spring Boot
-    const catId = parseInt(data.categoryId, 10) || 1;
+    const catId = this.resolveBackendCategoryId(data.categoryId);
     backendApi.products.create({
       name: data.name,
       sku: skuUpper,
@@ -743,9 +901,9 @@ class InventoryEngine {
     this.persist();
 
     // Async sync to backend
-    const locIdNum = parseInt(data.locationId, 10) || 1;
+    const locIdNum = this.resolveBackendLocationId(data.locationId);
     const backendItems = data.items.map((it) => ({
-      productId: parseInt(it.productId, 10) || 1,
+      productId: this.resolveBackendProductId(it.productId),
       quantity: it.orderedQty,
     }));
     backendApi.receipts.create({
@@ -860,9 +1018,9 @@ class InventoryEngine {
     this.persist();
 
     // Async sync to backend
-    const locIdNum = parseInt(data.locationId, 10) || 1;
+    const locIdNum = this.resolveBackendLocationId(data.locationId);
     const backendItems = data.items.map((it) => ({
-      productId: parseInt(it.productId, 10) || 1,
+      productId: this.resolveBackendProductId(it.productId),
       quantity: it.requestedQty,
     }));
     backendApi.deliveries.create({
@@ -1031,9 +1189,9 @@ class InventoryEngine {
     this.persist();
 
     // Async sync to Spring Boot
-    const srcIdNum = parseInt(data.sourceLocationId, 10) || 1;
-    const destIdNum = parseInt(data.destLocationId, 10) || 4;
-    const prodIdNum = parseInt(data.productId, 10) || 1;
+    const srcIdNum = this.resolveBackendLocationId(data.sourceLocationId);
+    const destIdNum = this.resolveBackendLocationId(data.destLocationId);
+    const prodIdNum = this.resolveBackendProductId(data.productId);
     backendApi.transfers.create({
       sourceLocationId: srcIdNum,
       destinationLocationId: destIdNum,
@@ -1238,12 +1396,14 @@ class InventoryEngine {
     this.persist();
 
     // Async sync to Spring Boot
-    const locIdNum = parseInt(data.locationId, 10) || 1;
-    const prodIdNum = parseInt(data.productId, 10) || 1;
+    const locIdNum = this.resolveBackendLocationId(data.locationId);
+    const prodIdNum = this.resolveBackendProductId(data.productId);
+    const reasonCode = (data.reason || 'COUNTING_ERROR').toUpperCase().replace(/ /g, '_').replace(/-/g, '_');
     backendApi.adjustments.create({
       locationId: locIdNum,
-      reason: data.reason,
-      items: [{ productId: prodIdNum, countedQuantity: data.physicalCount }],
+      reason: reasonCode,
+      notes: data.notes,
+      items: [{ productId: prodIdNum, physicalQuantity: data.physicalCount, countedQuantity: data.physicalCount }],
     }).then((doc) => backendApi.adjustments.validate(doc.documentId)).then(() => this.syncWithBackend()).catch((e) => console.warn('Backend adjustment note:', e));
 
     return {

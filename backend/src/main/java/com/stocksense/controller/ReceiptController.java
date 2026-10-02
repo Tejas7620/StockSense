@@ -85,7 +85,7 @@ public class ReceiptController {
                 operationService.markReceiptReady(documentId)));
     }
 
-    @PatchMapping("/{documentId}/validate")
+    @RequestMapping(value = "/{documentId}/validate", method = {RequestMethod.POST, RequestMethod.PATCH})
     public ResponseEntity<ApiResponse<DocumentResponse>> validateReceipt(
             @PathVariable UUID documentId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {

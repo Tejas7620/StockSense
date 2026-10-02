@@ -21,7 +21,7 @@ import java.util.UUID;
  * operation appears here.
  */
 @RestController
-@RequestMapping("/api/v1/moves")
+@RequestMapping({"/api/v1/moves", "/api/v1/stock-moves"})
 @RequiredArgsConstructor
 public class MovesController {
 

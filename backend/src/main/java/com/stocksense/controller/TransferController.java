@@ -78,7 +78,7 @@ public class TransferController {
                 operationService.updateTransfer(documentId, request, user)));
     }
 
-    @PatchMapping("/{documentId}/validate")
+    @RequestMapping(value = "/{documentId}/validate", method = {RequestMethod.POST, RequestMethod.PATCH})
     public ResponseEntity<ApiResponse<DocumentResponse>> validateTransfer(
             @PathVariable UUID documentId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {

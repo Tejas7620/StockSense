@@ -1,14 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowDownToLine,
   Plus,
   Search,
   CheckCircle2,
-  Clock,
-  Building,
   Package,
   X,
-  Sparkles,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { inventoryEngine } from '../services/inventoryEngine';
@@ -17,11 +14,17 @@ import { useToast } from '../components/Toast';
 import { RouteId } from '../components/Sidebar';
 
 interface ReceiptsViewProps {
-  onNavigate: (route: RouteId, targetId?: string) => void;
+  onNavigate?: (route: RouteId, targetId?: string) => void;
   openNewModalOnLoad?: boolean;
+  selectedWarehouse?: string;
+  targetReceiptId?: string;
 }
 
-export const ReceiptsView: React.FC<ReceiptsViewProps> = ({ onNavigate, openNewModalOnLoad }) => {
+export const ReceiptsView: React.FC<ReceiptsViewProps> = ({
+  openNewModalOnLoad,
+  selectedWarehouse,
+  targetReceiptId,
+}) => {
   const { showToast } = useToast();
   const receipts = inventoryEngine.getReceipts();
   const products = inventoryEngine.getProducts();
@@ -33,15 +36,54 @@ export const ReceiptsView: React.FC<ReceiptsViewProps> = ({ onNavigate, openNewM
   const [isModalOpen, setIsModalOpen] = useState(openNewModalOnLoad || false);
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
 
+  const initialWh = (selectedWarehouse && selectedWarehouse !== 'all' ? selectedWarehouse : warehouses[0]?.id) || '1';
+  const initialLocs = locations.filter((l) => l.warehouseId === initialWh);
+  const initialLoc = initialLocs[0]?.id || '1';
+
   // Form State
   const [formData, setFormData] = useState({
     supplier: '',
-    warehouseId: 'wh-main',
-    locationId: 'loc-rack-a',
-    productId: products[0]?.id || 'prod-steel-rod',
+    warehouseId: initialWh,
+    locationId: initialLoc,
+    productId: products[0]?.id || '1',
     quantity: 50,
     notes: '',
   });
+
+  // Keep target receipt open if navigated from search or dashboard
+  useEffect(() => {
+    if (targetReceiptId) {
+      const match = receipts.find((r) => r.id === targetReceiptId || r.reference.toLowerCase() === targetReceiptId.toLowerCase());
+      if (match) setSelectedReceipt(match);
+    }
+  }, [targetReceiptId, receipts]);
+
+  // Keep form data locations consistent with available warehouses & locations
+  useEffect(() => {
+    if (warehouses.length > 0) {
+      const currentWhValid = warehouses.some((w) => w.id === formData.warehouseId);
+      const activeWh = currentWhValid ? formData.warehouseId : warehouses[0].id;
+      const validLocs = locations.filter((l) => l.warehouseId === activeWh);
+      const isLocValid = validLocs.some((l) => l.id === formData.locationId);
+
+      if (!currentWhValid || !isLocValid) {
+        setFormData((prev) => ({
+          ...prev,
+          warehouseId: activeWh,
+          locationId: isLocValid ? prev.locationId : validLocs[0]?.id || '',
+        }));
+      }
+    }
+  }, [warehouses, locations, formData.warehouseId, formData.locationId]);
+
+  const handleWarehouseChange = (whId: string) => {
+    const locs = locations.filter((l) => l.warehouseId === whId);
+    setFormData((prev) => ({
+      ...prev,
+      warehouseId: whId,
+      locationId: locs[0]?.id || '',
+    }));
+  };
 
   const filteredReceipts = receipts.filter((r) => {
     if (search) {
@@ -302,7 +344,7 @@ export const ReceiptsView: React.FC<ReceiptsViewProps> = ({ onNavigate, openNewM
                   <label className="input-label">Destination Warehouse</label>
                   <select
                     value={formData.warehouseId}
-                    onChange={(e) => setFormData({ ...formData, warehouseId: e.target.value })}
+                    onChange={(e) => handleWarehouseChange(e.target.value)}
                     className="input-field"
                   >
                     {warehouses.map((w) => (

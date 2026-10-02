@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
-import { Layers, Search, Filter, Package, MapPin, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search } from 'lucide-react';
 import { inventoryEngine } from '../services/inventoryEngine';
 import { RouteId } from '../components/Sidebar';
 
 interface StockOverviewViewProps {
   onNavigate: (route: RouteId, targetId?: string) => void;
+  selectedWarehouse?: string;
 }
 
-export const StockOverviewView: React.FC<StockOverviewViewProps> = ({ onNavigate }) => {
+export const StockOverviewView: React.FC<StockOverviewViewProps> = ({ onNavigate, selectedWarehouse: propWarehouse }) => {
   const quants = inventoryEngine.getQuants();
   const products = inventoryEngine.getProducts();
   const warehouses = inventoryEngine.getWarehouses();
@@ -15,8 +16,14 @@ export const StockOverviewView: React.FC<StockOverviewViewProps> = ({ onNavigate
   const categories = inventoryEngine.getCategories();
 
   const [search, setSearch] = useState('');
-  const [selectedWarehouse, setSelectedWarehouse] = useState('all');
+  const [selectedWarehouse, setSelectedWarehouse] = useState(propWarehouse || 'all');
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  useEffect(() => {
+    if (propWarehouse) {
+      setSelectedWarehouse(propWarehouse);
+    }
+  }, [propWarehouse]);
 
   // Enrich quants with product and location info
   const enrichedStock = quants.map((q) => {

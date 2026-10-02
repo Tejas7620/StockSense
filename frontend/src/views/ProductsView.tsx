@@ -1,29 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Package,
   Plus,
   Search,
-  Filter,
-  MoreVertical,
-  ExternalLink,
   ArrowLeftRight,
   Sliders,
-  AlertTriangle,
   X,
-  CheckCircle2,
 } from 'lucide-react';
 import { inventoryEngine } from '../services/inventoryEngine';
-import { Product, ProductStatus } from '../types';
 import { RouteId } from '../components/Sidebar';
 import { useToast } from '../components/Toast';
 
 interface ProductsViewProps {
+  selectedWarehouse?: string;
   onNavigate: (route: RouteId, targetId?: string) => void;
   onOpenTransferForProduct?: (productId: string) => void;
   onOpenAdjustmentForProduct?: (productId: string) => void;
 }
 
 export const ProductsView: React.FC<ProductsViewProps> = ({
+  selectedWarehouse,
   onNavigate,
   onOpenTransferForProduct,
   onOpenAdjustmentForProduct,
@@ -39,19 +35,55 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  const initialWh = (selectedWarehouse && selectedWarehouse !== 'all' ? selectedWarehouse : warehouses[0]?.id) || '1';
+  const initialLocs = locations.filter((l) => l.warehouseId === initialWh);
+  const initialLoc = initialLocs[0]?.id || '1';
+  const initialCat = categories[0]?.id || '1';
+
   // New Product Form State
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
-    categoryId: categories[0]?.id || 'cat-raw',
+    categoryId: initialCat,
     uom: 'pcs',
     initialStock: 0,
     reorderLevel: 20,
     targetLevel: 50,
-    warehouseId: 'wh-main',
-    locationId: 'loc-rack-a',
+    warehouseId: initialWh,
+    locationId: initialLoc,
     description: '',
   });
+
+  // Keep form data consistent with available warehouses & locations
+  useEffect(() => {
+    if (warehouses.length > 0) {
+      const currentWhValid = warehouses.some((w) => w.id === formData.warehouseId);
+      const activeWh = currentWhValid ? formData.warehouseId : warehouses[0].id;
+      const validLocs = locations.filter((l) => l.warehouseId === activeWh);
+      const isLocValid = validLocs.some((l) => l.id === formData.locationId);
+
+      const currentCatValid = categories.some((c) => c.id === formData.categoryId);
+      const activeCat = currentCatValid ? formData.categoryId : categories[0]?.id || '1';
+
+      if (!currentWhValid || !isLocValid || !currentCatValid) {
+        setFormData((prev) => ({
+          ...prev,
+          warehouseId: activeWh,
+          locationId: isLocValid ? prev.locationId : validLocs[0]?.id || '',
+          categoryId: activeCat,
+        }));
+      }
+    }
+  }, [warehouses, locations, categories, formData.warehouseId, formData.locationId, formData.categoryId]);
+
+  const handleWarehouseChange = (whId: string) => {
+    const locs = locations.filter((l) => l.warehouseId === whId);
+    setFormData((prev) => ({
+      ...prev,
+      warehouseId: whId,
+      locationId: locs[0]?.id || '',
+    }));
+  };
 
   // Filter products
   const filteredProducts = products.filter((p) => {
@@ -447,7 +479,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                     <label className="input-label">Initial Warehouse</label>
                     <select
                       value={formData.warehouseId}
-                      onChange={(e) => setFormData({ ...formData, warehouseId: e.target.value })}
+                      onChange={(e) => handleWarehouseChange(e.target.value)}
                       className="input-field"
                     >
                       {warehouses.map((w) => (

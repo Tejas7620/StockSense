@@ -29,6 +29,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final StockRepository stockRepository;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public Page<ProductResponse> getAllProducts(String search, Long categoryId, Pageable pageable) {
@@ -80,6 +81,9 @@ public class ProductService {
                 .build();
 
         product = productRepository.save(product);
+        String userEmail = getCurrentUserEmail();
+        auditService.record("CREATE_PRODUCT", "PRODUCT", product.getId().toString(), userEmail,
+                "Created product " + product.getSku() + " - " + product.getName());
         log.info("Created product: {} ({})", product.getName(), product.getSku());
         return InventoryMapper.toProductResponse(product, 0);
     }
@@ -106,6 +110,9 @@ public class ProductService {
 
         product = productRepository.save(product);
         int totalStock = stockRepository.sumQuantityOnHandByProductId(id);
+        String userEmail = getCurrentUserEmail();
+        auditService.record("UPDATE_PRODUCT", "PRODUCT", product.getId().toString(), userEmail,
+                "Updated product " + product.getSku());
         log.info("Updated product: {} ({})", product.getName(), product.getSku());
         return InventoryMapper.toProductResponse(product, totalStock);
     }
@@ -118,6 +125,20 @@ public class ProductService {
         // Prefer deactivation over deletion when historical moves exist
         product.setActive(false);
         productRepository.save(product);
+        String userEmail = getCurrentUserEmail();
+        auditService.record("DELETE_PRODUCT", "PRODUCT", product.getId().toString(), userEmail,
+                "Deactivated product " + product.getSku());
         log.info("Deactivated product: {} ({})", product.getName(), product.getSku());
+    }
+
+    private String getCurrentUserEmail() {
+        try {
+            org.springframework.security.core.Authentication auth =
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
+                return auth.getName();
+            }
+        } catch (Exception ignored) {}
+        return "system";
     }
 }

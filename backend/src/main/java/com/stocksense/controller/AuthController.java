@@ -16,7 +16,7 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/signup")
+    @PostMapping({"/signup", "/register/request-otp"})
     public ResponseEntity<ApiResponse<UserResponse>> signup(@Valid @RequestBody SignupRequest request) {
         UserResponse userResponse = authService.signup(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(userResponse));
@@ -40,7 +40,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("OTP sent successfully."));
     }
 
-    @PostMapping("/verify-otp")
+    @PostMapping({"/verify-otp", "/verify-reset-otp", "/register/verify-otp"})
     public ResponseEntity<ApiResponse<String>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
         authService.verifyOtp(request);
         return ResponseEntity.ok(ApiResponse.success("OTP verified successfully."));

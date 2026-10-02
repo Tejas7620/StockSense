@@ -219,13 +219,12 @@ class AuthControllerTest {
             String accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
                     .path("data").path("accessToken").asText();
 
-            // Try to hit a manager-only endpoint (if one exists)
-            // For now, verify the token works on an authenticated endpoint
-            mockMvc.perform(get("/api/v1/products")
-                            .header("Authorization", "Bearer " + accessToken))
-                    // Should not be 401 — user IS authenticated
-                    // The actual 403 test depends on Backend Dev 2's endpoints
-                    .andExpect(status().is4xxClientError());
+            // Try to hit a manager-only endpoint: POST /api/v1/products should return 403 FORBIDDEN for STAFF
+            mockMvc.perform(post("/api/v1/products")
+                            .header("Authorization", "Bearer " + accessToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"Unauthorized Item\",\"sku\":\"UNAUTH-01\",\"categoryId\":1,\"unitOfMeasure\":\"pcs\"}"))
+                    .andExpect(status().isForbidden());
         }
 
         @Test

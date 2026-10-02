@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { User, ShieldCheck, Mail, Key, RotateCcw, LogOut, CheckCircle2 } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { inventoryEngine } from '../services/inventoryEngine';
 import { UserRole } from '../types';
 import { useToast } from '../components/Toast';
 import { RouteId } from '../components/Sidebar';
 
 interface ProfileViewProps {
-  onNavigate: (route: RouteId) => void;
+  onNavigate?: (route: RouteId) => void;
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
+export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate: _onNavigate }) => {
   const { showToast } = useToast();
   const user = inventoryEngine.getUser();
   const [name, setName] = useState(user.name);

@@ -84,7 +84,7 @@ public class DeliveryController {
                 operationService.checkDeliveryAvailability(documentId)));
     }
 
-    @PatchMapping("/{documentId}/validate")
+    @RequestMapping(value = "/{documentId}/validate", method = {RequestMethod.POST, RequestMethod.PATCH})
     public ResponseEntity<ApiResponse<DocumentResponse>> validateDelivery(
             @PathVariable UUID documentId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {

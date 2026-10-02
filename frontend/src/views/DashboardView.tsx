@@ -6,19 +6,13 @@ import {
   FileText,
   ArrowLeftRight,
   Plus,
-  Truck,
   ArrowRight,
   TrendingUp,
-  Clock,
-  CheckCircle2,
   MapPin,
   Bot,
-  ExternalLink,
-  ChevronRight,
-  Layers,
 } from 'lucide-react';
 import { inventoryEngine } from '../services/inventoryEngine';
-import { DashboardStats, Product, StockLedgerEntry } from '../types';
+import { DashboardStats } from '../types';
 import { RouteId } from '../components/Sidebar';
 
 interface DashboardViewProps {
@@ -108,7 +102,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             Good morning, {user.name.split(' ')[0]} 👋
           </h1>
           <p style={{ color: '#64748B', fontSize: 14, marginTop: 4 }}>
-            Here's a quick overview of your inventory today.
+            Here's a quick overview of your inventory {selectedWarehouse === 'all' ? 'across all enterprise facilities' : `for ${inventoryEngine.getWarehouses().find(w => w.id === selectedWarehouse)?.name || 'active facility'}`}.
           </p>
         </div>
 

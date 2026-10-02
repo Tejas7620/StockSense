@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Bot, Sparkles, Send, ArrowRight, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { X, Bot, Send } from 'lucide-react';
 import { inventoryEngine } from '../services/inventoryEngine';
 import { RouteId } from './Sidebar';
 

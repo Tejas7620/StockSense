@@ -29,6 +29,7 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final OtpService otpService;
     private final AuthenticationManager authenticationManager;
+    private final AuditService auditService;
 
     /**
      * Register a new STAFF user. Self-signup always gives STAFF role.
@@ -39,15 +40,23 @@ public class AuthService {
             throw new DuplicateEmailException(request.getEmail());
         }
 
+        Role role = Role.STAFF;
+        if (request.getRole() != null && !request.getRole().isBlank()) {
+            try {
+                role = Role.valueOf(request.getRole().trim().toUpperCase());
+            } catch (Exception ignored) {}
+        }
+
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .role(Role.STAFF)
+                .role(role)
                 .active(true)
                 .build();
 
         user = userRepository.save(user);
+        auditService.record("REGISTER", "USER", user.getId().toString(), user.getEmail(), "New user registered with role " + user.getRole());
         log.info("New user registered: {} ({})", user.getEmail(), user.getRole());
 
         return UserResponse.builder()
@@ -73,6 +82,8 @@ public class AuthService {
 
         String accessToken = jwtService.generateAccessToken(userDetails);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+
+        auditService.record("LOGIN", "USER", user.getId().toString(), user.getEmail(), "User successfully logged in");
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
@@ -161,6 +172,7 @@ public class AuthService {
         // Revoke all refresh tokens for this user
         refreshTokenService.revokeAllUserTokens(user.getId());
 
+        auditService.record("PASSWORD_RESET", "USER", user.getId().toString(), user.getEmail(), "Password reset successfully via OTP");
         log.info("Password reset for user: {}", user.getEmail());
     }
 

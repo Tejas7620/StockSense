@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles, CheckCircle2, ArrowRight, Play, RotateCcw, ShieldCheck, ScrollText } from 'lucide-react';
+import { X, Sparkles, CheckCircle2, Play, RotateCcw, ScrollText } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { inventoryEngine } from '../services/inventoryEngine';
 import { useToast } from './Toast';

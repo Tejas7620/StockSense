@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Truck,
   Plus,
@@ -7,8 +7,6 @@ import {
   Package,
   AlertCircle,
   X,
-  ArrowRight,
-  ShieldAlert,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { inventoryEngine } from '../services/inventoryEngine';
@@ -17,11 +15,17 @@ import { useToast } from '../components/Toast';
 import { RouteId } from '../components/Sidebar';
 
 interface DeliveriesViewProps {
-  onNavigate: (route: RouteId, targetId?: string) => void;
+  onNavigate?: (route: RouteId, targetId?: string) => void;
   openNewModalOnLoad?: boolean;
+  selectedWarehouse?: string;
+  targetDeliveryId?: string;
 }
 
-export const DeliveriesView: React.FC<DeliveriesViewProps> = ({ onNavigate, openNewModalOnLoad }) => {
+export const DeliveriesView: React.FC<DeliveriesViewProps> = ({
+  openNewModalOnLoad,
+  selectedWarehouse,
+  targetDeliveryId,
+}) => {
   const { showToast } = useToast();
   const deliveries = inventoryEngine.getDeliveries();
   const products = inventoryEngine.getProducts();
@@ -33,15 +37,54 @@ export const DeliveriesView: React.FC<DeliveriesViewProps> = ({ onNavigate, open
   const [isModalOpen, setIsModalOpen] = useState(openNewModalOnLoad || false);
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
 
+  const initialWh = (selectedWarehouse && selectedWarehouse !== 'all' ? selectedWarehouse : warehouses[0]?.id) || '1';
+  const initialLocs = locations.filter((l) => l.warehouseId === initialWh);
+  const initialLoc = initialLocs[0]?.id || '1';
+
   // Form State
   const [formData, setFormData] = useState({
     customer: '',
-    warehouseId: 'wh-main',
-    locationId: 'loc-rack-b',
-    productId: products[4]?.id || 'prod-chairs', // Chairs
+    warehouseId: initialWh,
+    locationId: initialLoc,
+    productId: products[4]?.id || products[0]?.id || '1',
     quantity: 10,
     notes: '',
   });
+
+  // Keep target delivery open if navigated from search or dashboard
+  useEffect(() => {
+    if (targetDeliveryId) {
+      const match = deliveries.find((d) => d.id === targetDeliveryId || d.reference.toLowerCase() === targetDeliveryId.toLowerCase());
+      if (match) setSelectedDelivery(match);
+    }
+  }, [targetDeliveryId, deliveries]);
+
+  // Keep form data locations consistent with available warehouses & locations
+  useEffect(() => {
+    if (warehouses.length > 0) {
+      const currentWhValid = warehouses.some((w) => w.id === formData.warehouseId);
+      const activeWh = currentWhValid ? formData.warehouseId : warehouses[0].id;
+      const validLocs = locations.filter((l) => l.warehouseId === activeWh);
+      const isLocValid = validLocs.some((l) => l.id === formData.locationId);
+
+      if (!currentWhValid || !isLocValid) {
+        setFormData((prev) => ({
+          ...prev,
+          warehouseId: activeWh,
+          locationId: isLocValid ? prev.locationId : validLocs[0]?.id || '',
+        }));
+      }
+    }
+  }, [warehouses, locations, formData.warehouseId, formData.locationId]);
+
+  const handleWarehouseChange = (whId: string) => {
+    const locs = locations.filter((l) => l.warehouseId === whId);
+    setFormData((prev) => ({
+      ...prev,
+      warehouseId: whId,
+      locationId: locs[0]?.id || '',
+    }));
+  };
 
   // Calculate live available stock at selected location
   const currentQuant = inventoryEngine
@@ -292,7 +335,7 @@ export const DeliveriesView: React.FC<DeliveriesViewProps> = ({ onNavigate, open
                   <label className="input-label">Source Warehouse</label>
                   <select
                     value={formData.warehouseId}
-                    onChange={(e) => setFormData({ ...formData, warehouseId: e.target.value })}
+                    onChange={(e) => handleWarehouseChange(e.target.value)}
                     className="input-field"
                   >
                     {warehouses.map((w) => (

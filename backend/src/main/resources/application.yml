@@ -3,7 +3,7 @@ spring:
     name: stocksense-backend
 
   datasource:
-    url: ${DB_URL:jdbc:h2:file:./data/stocksense;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH}
+    url: ${DB_URL:jdbc:h2:file:./data/stocksense;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH}
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:}
     driver-class-name: ${DB_DRIVER:org.h2.Driver}
@@ -21,6 +21,10 @@ spring:
 
   flyway:
     enabled: false
+
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
 
 server:
   port: ${SERVER_PORT:8080}

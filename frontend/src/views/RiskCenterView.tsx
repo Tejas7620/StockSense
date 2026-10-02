@@ -3,16 +3,10 @@ import {
   AlertTriangle,
   AlertCircle,
   Package,
-  TrendingDown,
-  ArrowRight,
-  Plus,
   ArrowDownToLine,
-  Filter,
 } from 'lucide-react';
 import { inventoryEngine } from '../services/inventoryEngine';
-import { Product } from '../types';
 import { RouteId } from '../components/Sidebar';
-import { useToast } from '../components/Toast';
 
 interface RiskCenterViewProps {
   onNavigate: (route: RouteId, targetId?: string) => void;
@@ -20,7 +14,6 @@ interface RiskCenterViewProps {
 }
 
 export const RiskCenterView: React.FC<RiskCenterViewProps> = ({ onNavigate, onOpenReceiptForProduct }) => {
-  const { showToast } = useToast();
   const products = inventoryEngine.getProducts();
   const [tabFilter, setTabFilter] = useState<'all' | 'out' | 'low' | 'high'>('all');
 

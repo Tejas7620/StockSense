@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Boxes,
   Building,
   MapPin,
-  Package,
   ArrowLeftRight,
   Sliders,
   ChevronDown,
@@ -16,19 +14,34 @@ interface StockByLocationViewProps {
   onNavigate: (route: RouteId, targetId?: string) => void;
   onOpenTransferForProduct: (productId: string) => void;
   onOpenAdjustmentForProduct: (productId: string) => void;
+  selectedWarehouse?: string;
 }
 
 export const StockByLocationView: React.FC<StockByLocationViewProps> = ({
   onNavigate,
   onOpenTransferForProduct,
   onOpenAdjustmentForProduct,
+  selectedWarehouse,
 }) => {
   const warehouses = inventoryEngine.getWarehouses();
   const locations = inventoryEngine.getLocations();
   const quants = inventoryEngine.getQuants();
   const products = inventoryEngine.getProducts();
 
-  const [expandedWarehouse, setExpandedWarehouse] = useState<string>('wh-main');
+  const getInitialWh = () => {
+    if (selectedWarehouse && selectedWarehouse !== 'all') {
+      return selectedWarehouse;
+    }
+    return warehouses[0]?.id || '';
+  };
+
+  const [expandedWarehouse, setExpandedWarehouse] = useState<string>(getInitialWh());
+
+  useEffect(() => {
+    if (selectedWarehouse && selectedWarehouse !== 'all') {
+      setExpandedWarehouse(selectedWarehouse);
+    }
+  }, [selectedWarehouse]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>

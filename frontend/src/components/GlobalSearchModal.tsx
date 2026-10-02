@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Package, ArrowDownToLine, Truck, ArrowLeftRight, ScrollText, ArrowRight } from 'lucide-react';
+import { Search, X, Package, ArrowDownToLine, Truck, ArrowLeftRight, ArrowRight } from 'lucide-react';
 import { inventoryEngine } from '../services/inventoryEngine';
 import { RouteId } from './Sidebar';
 

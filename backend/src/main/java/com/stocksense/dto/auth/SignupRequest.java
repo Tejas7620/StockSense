@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public class SignupRequest {
 
     @NotBlank(message = "Name is required.")
@@ -25,4 +26,6 @@ public class SignupRequest {
     @NotBlank(message = "Password is required.")
     @Size(min = 8, max = 128, message = "Password must be between 8 and 128 characters.")
     private String password;
+
+    private String role;
 }

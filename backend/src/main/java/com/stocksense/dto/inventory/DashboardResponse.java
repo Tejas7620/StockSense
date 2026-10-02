@@ -17,9 +17,12 @@ import java.util.List;
 @AllArgsConstructor
 public class DashboardResponse {
     private Long totalProducts;
+    private Long totalStock;
     private BigDecimal totalStockValue;
     private Long lowStockCount;
     private Long outOfStockCount;
+    private Long lowStockProducts;
+    private Long outOfStockProducts;
     private Long pendingReceipts;
     private Long pendingDeliveries;
     private Long pendingTransfers;

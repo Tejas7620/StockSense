@@ -16,7 +16,7 @@ public class DashboardController {
 
     private final DashboardService dashboardService;
 
-    @GetMapping
+    @GetMapping({"", "/summary"})
     public ResponseEntity<ApiResponse<DashboardResponse>> getDashboard() {
         return ResponseEntity.ok(ApiResponse.success(dashboardService.getDashboard()));
     }

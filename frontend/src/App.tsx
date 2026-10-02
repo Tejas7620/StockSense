@@ -61,6 +61,13 @@ const MainApplication: React.FC = () => {
     return unsubscribe;
   }, []);
 
+  // Synchronize live data whenever user is authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      inventoryEngine.syncWithBackend();
+    }
+  }, [isAuthenticated]);
+
   const handleNavigate = (route: RouteId, targetId?: string) => {
     setCurrentRoute(route);
     setTargetEntityId(targetId);
@@ -195,6 +202,7 @@ const MainApplication: React.FC = () => {
           {currentRoute === 'products' && !targetEntityId && (
             <ProductsView
               onNavigate={handleNavigate}
+              selectedWarehouse={selectedWarehouse}
               onOpenTransferForProduct={(prodId) => {
                 setSelectedProductForAction(prodId);
                 setOpenNewTransferModal(true);
@@ -232,6 +240,8 @@ const MainApplication: React.FC = () => {
             <ReceiptsView
               onNavigate={handleNavigate}
               openNewModalOnLoad={openNewReceiptModal}
+              selectedWarehouse={selectedWarehouse}
+              targetReceiptId={targetEntityId}
             />
           )}
 
@@ -239,6 +249,8 @@ const MainApplication: React.FC = () => {
             <DeliveriesView
               onNavigate={handleNavigate}
               openNewModalOnLoad={openNewDeliveryModal}
+              selectedWarehouse={selectedWarehouse}
+              targetDeliveryId={targetEntityId}
             />
           )}
 
@@ -247,6 +259,8 @@ const MainApplication: React.FC = () => {
               onNavigate={handleNavigate}
               openNewModalOnLoad={openNewTransferModal}
               preselectedProductId={selectedProductForAction}
+              selectedWarehouse={selectedWarehouse}
+              targetTransferId={targetEntityId}
             />
           )}
 
@@ -254,13 +268,21 @@ const MainApplication: React.FC = () => {
             <AdjustmentsView
               onNavigate={handleNavigate}
               preselectedProductId={selectedProductForAction}
+              selectedWarehouse={selectedWarehouse}
+              targetAdjustmentId={targetEntityId}
             />
           )}
 
-          {currentRoute === 'stock' && <StockOverviewView onNavigate={handleNavigate} />}
+          {currentRoute === 'stock' && (
+            <StockOverviewView
+              onNavigate={handleNavigate}
+              selectedWarehouse={selectedWarehouse}
+            />
+          )}
           {currentRoute === 'stock-location' && (
             <StockByLocationView
               onNavigate={handleNavigate}
+              selectedWarehouse={selectedWarehouse}
               onOpenTransferForProduct={(prodId) => {
                 setSelectedProductForAction(prodId);
                 setOpenNewTransferModal(true);

@@ -1,14 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeftRight,
   Plus,
   Search,
-  CheckCircle2,
   Package,
   X,
   ArrowRight,
-  Building,
-  RotateCw,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { inventoryEngine } from '../services/inventoryEngine';
@@ -20,12 +17,16 @@ interface TransfersViewProps {
   onNavigate: (route: RouteId, targetId?: string) => void;
   openNewModalOnLoad?: boolean;
   preselectedProductId?: string;
+  selectedWarehouse?: string;
+  targetTransferId?: string;
 }
 
 export const TransfersView: React.FC<TransfersViewProps> = ({
   onNavigate,
   openNewModalOnLoad,
   preselectedProductId,
+  selectedWarehouse,
+  targetTransferId,
 }) => {
   const { showToast } = useToast();
   const transfers = inventoryEngine.getTransfers();
@@ -37,16 +38,75 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(openNewModalOnLoad || false);
   const [selectedTransfer, setSelectedTransfer] = useState<InternalTransfer | null>(null);
 
+  const initialSourceWh = (selectedWarehouse && selectedWarehouse !== 'all' ? selectedWarehouse : warehouses[0]?.id) || '1';
+  const initialSourceLocs = locations.filter((l) => l.warehouseId === initialSourceWh);
+  const initialSourceLoc = initialSourceLocs[0]?.id || '1';
+
+  const initialDestWh = initialSourceWh;
+  const initialDestLocs = locations.filter((l) => l.warehouseId === initialDestWh);
+  const initialDestLoc = initialDestLocs[1]?.id || initialDestLocs[0]?.id || '4';
+
   // Form State
   const [formData, setFormData] = useState({
-    sourceWarehouseId: 'wh-main',
-    sourceLocationId: 'loc-rack-a',
-    destWarehouseId: 'wh-prod',
-    destLocationId: 'loc-prod-p1',
-    productId: preselectedProductId || 'prod-steel-rod',
+    sourceWarehouseId: initialSourceWh,
+    sourceLocationId: initialSourceLoc,
+    destWarehouseId: initialDestWh,
+    destLocationId: initialDestLoc,
+    productId: preselectedProductId || products[0]?.id || '1',
     quantity: 30,
     notes: '',
   });
+
+  // Keep target transfer open if navigated from search or dashboard
+  useEffect(() => {
+    if (targetTransferId) {
+      const match = transfers.find((t) => t.id === targetTransferId || t.reference.toLowerCase() === targetTransferId.toLowerCase());
+      if (match) setSelectedTransfer(match);
+    }
+  }, [targetTransferId, transfers]);
+
+  // Keep form data locations consistent with available warehouses & locations
+  useEffect(() => {
+    if (warehouses.length > 0) {
+      const currentSrcWhValid = warehouses.some((w) => w.id === formData.sourceWarehouseId);
+      const activeSrcWh = currentSrcWhValid ? formData.sourceWarehouseId : warehouses[0].id;
+      const validSrcLocs = locations.filter((l) => l.warehouseId === activeSrcWh);
+      const isSrcLocValid = validSrcLocs.some((l) => l.id === formData.sourceLocationId);
+
+      const currentDestWhValid = warehouses.some((w) => w.id === formData.destWarehouseId);
+      const activeDestWh = currentDestWhValid ? formData.destWarehouseId : warehouses[0].id;
+      const validDestLocs = locations.filter((l) => l.warehouseId === activeDestWh);
+      const isDestLocValid = validDestLocs.some((l) => l.id === formData.destLocationId);
+
+      if (!currentSrcWhValid || !isSrcLocValid || !currentDestWhValid || !isDestLocValid) {
+        setFormData((prev) => ({
+          ...prev,
+          sourceWarehouseId: activeSrcWh,
+          sourceLocationId: isSrcLocValid ? prev.sourceLocationId : validSrcLocs[0]?.id || '',
+          destWarehouseId: activeDestWh,
+          destLocationId: isDestLocValid ? prev.destLocationId : validDestLocs[1]?.id || validDestLocs[0]?.id || '',
+        }));
+      }
+    }
+  }, [warehouses, locations, formData.sourceWarehouseId, formData.sourceLocationId, formData.destWarehouseId, formData.destLocationId]);
+
+  const handleSourceWarehouseChange = (whId: string) => {
+    const locs = locations.filter((l) => l.warehouseId === whId);
+    setFormData((prev) => ({
+      ...prev,
+      sourceWarehouseId: whId,
+      sourceLocationId: locs[0]?.id || '',
+    }));
+  };
+
+  const handleDestWarehouseChange = (whId: string) => {
+    const locs = locations.filter((l) => l.warehouseId === whId);
+    setFormData((prev) => ({
+      ...prev,
+      destWarehouseId: whId,
+      destLocationId: locs[0]?.id || '',
+    }));
+  };
 
   const selectedProduct = products.find((p) => p.id === formData.productId);
   const sourceQuant = inventoryEngine.getQuants(
@@ -174,6 +234,21 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         >
           Move Inventory →
         </button>
+      </div>
+
+      {/* Search Bar */}
+      <div className="card" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: 12, top: 11 }} />
+          <input
+            type="text"
+            placeholder="Search transfers by reference, product, source or destination location..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="input-field"
+            style={{ paddingLeft: 36 }}
+          />
+        </div>
       </div>
 
       {/* Transfers Table */}
@@ -315,7 +390,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   </div>
                   <select
                     value={formData.sourceWarehouseId}
-                    onChange={(e) => setFormData({ ...formData, sourceWarehouseId: e.target.value })}
+                    onChange={(e) => handleSourceWarehouseChange(e.target.value)}
                     className="input-field"
                     style={{ marginBottom: 6 }}
                   >
@@ -348,7 +423,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   </div>
                   <select
                     value={formData.destWarehouseId}
-                    onChange={(e) => setFormData({ ...formData, destWarehouseId: e.target.value })}
+                    onChange={(e) => handleDestWarehouseChange(e.target.value)}
                     className="input-field"
                     style={{ marginBottom: 6 }}
                   >

@@ -1,14 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sliders,
   Plus,
   Search,
-  CheckCircle2,
-  Package,
   X,
-  AlertTriangle,
   Scale,
-  Sparkles,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { inventoryEngine } from '../services/inventoryEngine';
@@ -17,15 +13,19 @@ import { useToast } from '../components/Toast';
 import { RouteId } from '../components/Sidebar';
 
 interface AdjustmentsViewProps {
-  onNavigate: (route: RouteId, targetId?: string) => void;
+  onNavigate?: (route: RouteId, targetId?: string) => void;
   openNewModalOnLoad?: boolean;
   preselectedProductId?: string;
+  selectedWarehouse?: string;
+  targetAdjustmentId?: string;
 }
 
 export const AdjustmentsView: React.FC<AdjustmentsViewProps> = ({
   onNavigate,
   openNewModalOnLoad,
   preselectedProductId,
+  selectedWarehouse,
+  targetAdjustmentId,
 }) => {
   const { showToast } = useToast();
   const adjustments = inventoryEngine.getAdjustments();
@@ -37,15 +37,55 @@ export const AdjustmentsView: React.FC<AdjustmentsViewProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(openNewModalOnLoad || false);
   const [selectedAdjustment, setSelectedAdjustment] = useState<Adjustment | null>(null);
 
+  const initialWh = (selectedWarehouse && selectedWarehouse !== 'all' ? selectedWarehouse : warehouses[0]?.id) || '1';
+  const initialLocs = locations.filter((l) => l.warehouseId === initialWh);
+  const initialLoc = initialLocs[0]?.id || '1';
+  const initialProd = preselectedProductId || products[0]?.id || '1';
+
   // Form State
   const [formData, setFormData] = useState({
-    productId: preselectedProductId || 'prod-bearings',
-    warehouseId: 'wh-main',
-    locationId: 'loc-rack-b',
-    physicalCount: 7,
+    productId: initialProd,
+    warehouseId: initialWh,
+    locationId: initialLoc,
+    physicalCount: 10,
     reason: 'Counting Error' as AdjustmentReason,
     notes: '',
   });
+
+  // Keep target adjustment open if navigated from search or dashboard
+  useEffect(() => {
+    if (targetAdjustmentId) {
+      const match = adjustments.find((a) => a.id === targetAdjustmentId || a.reference.toLowerCase() === targetAdjustmentId.toLowerCase());
+      if (match) setSelectedAdjustment(match);
+    }
+  }, [targetAdjustmentId, adjustments]);
+
+  // Keep form data locations consistent with available warehouses & locations
+  useEffect(() => {
+    if (warehouses.length > 0) {
+      const currentWhValid = warehouses.some((w) => w.id === formData.warehouseId);
+      const activeWh = currentWhValid ? formData.warehouseId : warehouses[0].id;
+      const validLocs = locations.filter((l) => l.warehouseId === activeWh);
+      const isLocValid = validLocs.some((l) => l.id === formData.locationId);
+
+      if (!currentWhValid || !isLocValid) {
+        setFormData((prev) => ({
+          ...prev,
+          warehouseId: activeWh,
+          locationId: isLocValid ? prev.locationId : validLocs[0]?.id || '',
+        }));
+      }
+    }
+  }, [warehouses, locations, formData.warehouseId, formData.locationId]);
+
+  const handleWarehouseChange = (whId: string) => {
+    const locs = locations.filter((l) => l.warehouseId === whId);
+    setFormData((prev) => ({
+      ...prev,
+      warehouseId: whId,
+      locationId: locs[0]?.id || '',
+    }));
+  };
 
   const selectedProduct = products.find((p) => p.id === formData.productId);
   const currentQuant = inventoryEngine.getQuants(
@@ -152,8 +192,20 @@ export const AdjustmentsView: React.FC<AdjustmentsViewProps> = ({
             </div>
           </div>
         </div>
-        <div style={{ fontSize: 12.5, color: '#64748B', background: '#F1F5F9', padding: '6px 12px', borderRadius: 8 }}>
-          Authoritative backend balance synchronization
+      </div>
+
+      {/* Search Bar */}
+      <div className="card" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: 12, top: 11 }} />
+          <input
+            type="text"
+            placeholder="Search adjustments by reference, product name, or SKU..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="input-field"
+            style={{ paddingLeft: 36 }}
+          />
         </div>
       </div>
 
@@ -273,7 +325,7 @@ export const AdjustmentsView: React.FC<AdjustmentsViewProps> = ({
                   <label className="input-label">Warehouse</label>
                   <select
                     value={formData.warehouseId}
-                    onChange={(e) => setFormData({ ...formData, warehouseId: e.target.value })}
+                    onChange={(e) => handleWarehouseChange(e.target.value)}
                     className="input-field"
                   >
                     {warehouses.map((w) => (
@@ -474,7 +526,7 @@ export const AdjustmentsView: React.FC<AdjustmentsViewProps> = ({
                 <button
                   onClick={() => {
                     setSelectedAdjustment(null);
-                    onNavigate('ledger');
+                    onNavigate?.('ledger');
                   }}
                   className="btn btn-primary"
                   style={{ background: '#6D28D9' }}

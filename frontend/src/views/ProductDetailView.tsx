@@ -5,12 +5,9 @@ import {
   ArrowDownToLine,
   ArrowLeftRight,
   Sliders,
-  Layers,
   MapPin,
   Clock,
-  TrendingDown,
   TrendingUp,
-  AlertTriangle,
 } from 'lucide-react';
 import { inventoryEngine } from '../services/inventoryEngine';
 import { RouteId } from '../components/Sidebar';

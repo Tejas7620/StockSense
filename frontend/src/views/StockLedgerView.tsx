@@ -1,18 +1,14 @@
 import React, { useState } from 'react';
 import {
-  ScrollText,
   Search,
-  Filter,
   ArrowDownToLine,
   Truck,
   ArrowLeftRight,
   Sliders,
-  CheckCircle2,
   X,
-  FileSpreadsheet,
 } from 'lucide-react';
 import { inventoryEngine } from '../services/inventoryEngine';
-import { StockLedgerEntry, MovementType } from '../types';
+import { StockLedgerEntry } from '../types';
 import { RouteId } from '../components/Sidebar';
 
 interface StockLedgerViewProps {

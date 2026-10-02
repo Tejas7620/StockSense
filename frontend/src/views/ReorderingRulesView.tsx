@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings2, Plus, X, CheckCircle2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { inventoryEngine } from '../services/inventoryEngine';
 import { ReorderingRule } from '../types';
 import { useToast } from '../components/Toast';
@@ -12,45 +12,34 @@ export const ReorderingRulesView: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    productId: products[0]?.id || 'prod-steel-rod',
-    warehouseId: 'wh-main',
+    productId: products[0]?.id || '1',
+    warehouseId: warehouses[0]?.id || '1',
     minQuantity: 25,
     targetQuantity: 50,
   });
 
   const handleToggleRule = (rule: ReorderingRule) => {
-    rule.active = !rule.active;
-    inventoryEngine.resetToDefault();
+    const updatedStatus = inventoryEngine.toggleReorderRule(rule.id);
     showToast(
       'info',
       'Rule Updated',
-      `Reordering rule for ${rule.productName} is now ${rule.active ? 'Active' : 'Disabled'}.`
+      `Reordering rule for ${rule.productName} is now ${updatedStatus ? 'Active' : 'Disabled'}.`
     );
   };
 
   const handleCreateRule = (e: React.FormEvent) => {
     e.preventDefault();
-    const prod = products.find((p) => p.id === formData.productId);
-    const wh = warehouses.find((w) => w.id === formData.warehouseId);
-    if (!prod || !wh) return;
-
-    const state = inventoryEngine.getState();
-    state.reorderRules.push({
-      id: `rr-${Date.now()}`,
-      productId: prod.id,
-      productName: prod.name,
-      sku: prod.sku,
-      uom: prod.uom,
-      warehouseId: wh.id,
-      warehouseName: wh.name,
+    const created = inventoryEngine.addReorderRule({
+      productId: formData.productId,
+      warehouseId: formData.warehouseId,
       minQuantity: Number(formData.minQuantity) || 10,
       targetQuantity: Number(formData.targetQuantity) || 30,
-      active: true,
     });
 
-    inventoryEngine.resetToDefault();
-    showToast('success', 'Rule Created', `Reordering threshold rule set for ${prod.name}.`);
-    setIsModalOpen(false);
+    if (created) {
+      showToast('success', 'Rule Created', `Reordering threshold rule set for ${created.productName}.`);
+      setIsModalOpen(false);
+    }
   };
 
   return (

@@ -33,7 +33,7 @@ export const api = {
       inventoryEngine.setUser(updated);
       return updated;
     },
-    login: async (email: string): Promise<User> => {
+    login: async (_email: string): Promise<User> => {
       return inventoryEngine.getUser();
     },
   },

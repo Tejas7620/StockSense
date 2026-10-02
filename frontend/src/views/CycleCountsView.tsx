@@ -1,14 +1,7 @@
 import React, { useState } from 'react';
 import {
-  RefreshCw,
-  Plus,
-  Search,
   CheckCircle2,
-  Package,
   X,
-  AlertTriangle,
-  MapPin,
-  ClipboardList,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { inventoryEngine } from '../services/inventoryEngine';
@@ -17,10 +10,10 @@ import { useToast } from '../components/Toast';
 import { RouteId } from '../components/Sidebar';
 
 interface CycleCountsViewProps {
-  onNavigate: (route: RouteId, targetId?: string) => void;
+  onNavigate?: (route: RouteId, targetId?: string) => void;
 }
 
-export const CycleCountsView: React.FC<CycleCountsViewProps> = ({ onNavigate }) => {
+export const CycleCountsView: React.FC<CycleCountsViewProps> = ({ onNavigate: _onNavigate }) => {
   const { showToast } = useToast();
   const counts = inventoryEngine.getCycleCounts();
   const [selectedItem, setSelectedItem] = useState<CycleCount | null>(null);

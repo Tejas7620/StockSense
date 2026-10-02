@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { MapPin, Plus, Building, X } from 'lucide-react';
+import { MapPin, Plus, X } from 'lucide-react';
 import { inventoryEngine } from '../services/inventoryEngine';
 import { useToast } from '../components/Toast';
 import { RouteId } from '../components/Sidebar';
 
 interface LocationsViewProps {
-  onNavigate: (route: RouteId) => void;
+  onNavigate?: (route: RouteId) => void;
 }
 
-export const LocationsView: React.FC<LocationsViewProps> = ({ onNavigate }) => {
+export const LocationsView: React.FC<LocationsViewProps> = ({ onNavigate: _onNavigate }) => {
   const { showToast } = useToast();
   const locations = inventoryEngine.getLocations();
   const warehouses = inventoryEngine.getWarehouses();
@@ -16,7 +16,7 @@ export const LocationsView: React.FC<LocationsViewProps> = ({ onNavigate }) => {
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    warehouseId: 'wh-main',
+    warehouseId: warehouses[0]?.id || '1',
     type: 'Internal' as const,
   });
 
@@ -27,22 +27,16 @@ export const LocationsView: React.FC<LocationsViewProps> = ({ onNavigate }) => {
       return;
     }
 
-    const state = inventoryEngine.getState();
-    const wh = warehouses.find((w) => w.id === formData.warehouseId);
-    state.locations.push({
-      id: `loc-${Date.now()}`,
+    const newLoc = inventoryEngine.addLocation({
       warehouseId: formData.warehouseId,
-      warehouseName: wh?.name || 'Warehouse',
-      code: formData.code.toUpperCase(),
-      name: formData.name,
+      name: formData.name.trim(),
+      code: formData.code.trim(),
       type: formData.type,
-      status: 'Active',
     });
 
-    inventoryEngine.resetToDefault();
-    showToast('success', 'Location Created', `Location ${formData.name} added.`);
+    showToast('success', 'Location Created', `Location ${newLoc.name} (${newLoc.code}) added.`);
     setIsModalOpen(false);
-    setFormData({ name: '', code: '', warehouseId: 'wh-main', type: 'Internal' });
+    setFormData({ name: '', code: '', warehouseId: warehouses[0]?.id || '1', type: 'Internal' });
   };
 
   return (

@@ -1,15 +1,15 @@
 import React from 'react';
-import { Lightbulb, ArrowDownToLine, Package, CheckCircle2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { inventoryEngine } from '../services/inventoryEngine';
 import { RouteId } from '../components/Sidebar';
 import { useToast } from '../components/Toast';
 
 interface ReorderViewProps {
   onNavigate: (route: RouteId, targetId?: string) => void;
-  onOpenReceiptForProduct: (productId: string) => void;
+  onOpenReceiptForProduct?: (productId: string) => void;
 }
 
-export const ReorderView: React.FC<ReorderViewProps> = ({ onNavigate, onOpenReceiptForProduct }) => {
+export const ReorderView: React.FC<ReorderViewProps> = ({ onNavigate, onOpenReceiptForProduct: _onOpenReceiptForProduct }) => {
   const { showToast } = useToast();
   const products = inventoryEngine.getProducts();
   const rules = inventoryEngine.getReorderRules();

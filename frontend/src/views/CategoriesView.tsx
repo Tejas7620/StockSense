@@ -16,17 +16,13 @@ export const CategoriesView: React.FC = () => {
       return;
     }
 
-    const state = inventoryEngine.getState();
-    state.categories.push({
-      id: `cat-${Date.now()}`,
-      name: formData.name,
-      code: formData.code.toUpperCase(),
+    const newCat = inventoryEngine.addCategory({
+      name: formData.name.trim(),
+      code: formData.code.trim(),
       description: formData.description,
-      productCount: 0,
     });
 
-    inventoryEngine.resetToDefault();
-    showToast('success', 'Category Created', `Category ${formData.name} added.`);
+    showToast('success', 'Category Created', `Category ${newCat.name} added.`);
     setIsModalOpen(false);
     setFormData({ name: '', code: '', description: '' });
   };

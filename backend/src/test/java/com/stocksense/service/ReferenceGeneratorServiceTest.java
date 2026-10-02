@@ -13,6 +13,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.stocksense.repository.LocationRepository;
+import com.stocksense.repository.StockMoveRepository;
+import com.stocksense.repository.StockRepository;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
@@ -26,6 +30,15 @@ class ReferenceGeneratorServiceTest {
     private WarehouseRepository warehouseRepository;
 
     @Autowired
+    private LocationRepository locationRepository;
+
+    @Autowired
+    private StockRepository stockRepository;
+
+    @Autowired
+    private StockMoveRepository stockMoveRepository;
+
+    @Autowired
     private SequenceCounterRepository sequenceCounterRepository;
 
     private Warehouse warehouse;
@@ -33,6 +46,9 @@ class ReferenceGeneratorServiceTest {
     @BeforeEach
     void setUp() {
         sequenceCounterRepository.deleteAll();
+        stockMoveRepository.deleteAll();
+        stockRepository.deleteAll();
+        locationRepository.deleteAll();
         warehouseRepository.deleteAll();
 
         warehouse = warehouseRepository.save(Warehouse.builder()

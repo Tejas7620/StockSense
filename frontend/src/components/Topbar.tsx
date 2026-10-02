@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Search,
   Building,
@@ -10,6 +10,8 @@ import {
   User as UserIcon,
   ShieldCheck,
   LogOut,
+  Check,
+  Globe,
 } from 'lucide-react';
 import { Warehouse, User } from '../types';
 
@@ -44,6 +46,44 @@ export const Topbar: React.FC<TopbarProps> = ({
 }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showWarehouseMenu, setShowWarehouseMenu] = useState(false);
+
+  const warehouseRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (warehouseRef.current && !warehouseRef.current.contains(event.target as Node)) {
+        setShowWarehouseMenu(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowWarehouseMenu(false);
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  const handleToggleWarehouse = () => {
+    setShowWarehouseMenu((prev) => !prev);
+    setShowProfileMenu(false);
+  };
+
+  const handleToggleProfile = () => {
+    setShowProfileMenu((prev) => !prev);
+    setShowWarehouseMenu(false);
+  };
 
   const currentWarehouseName =
     selectedWarehouse === 'all'
@@ -185,26 +225,34 @@ export const Topbar: React.FC<TopbarProps> = ({
         </button>
 
         {/* Warehouse Selector Dropdown */}
-        <div style={{ position: 'relative' }}>
+        <div ref={warehouseRef} style={{ position: 'relative' }}>
           <button
-            onClick={() => setShowWarehouseMenu(!showWarehouseMenu)}
+            onClick={handleToggleWarehouse}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 8,
               padding: '7px 12px',
-              background: '#F8FAFC',
-              border: '1px solid #E2E8F0',
+              background: showWarehouseMenu ? '#EDE9FE' : '#F8FAFC',
+              border: showWarehouseMenu ? '1px solid #C4B5FD' : '1px solid #E2E8F0',
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 600,
-              color: '#334155',
+              color: showWarehouseMenu ? '#5B21B6' : '#334155',
               cursor: 'pointer',
+              transition: 'all 0.15s ease',
             }}
           >
             <Building size={16} color="#6D28D9" />
             <span>{currentWarehouseName}</span>
-            <ChevronDown size={14} color="#94A3B8" />
+            <ChevronDown
+              size={14}
+              color="#94A3B8"
+              style={{
+                transform: showWarehouseMenu ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease',
+              }}
+            />
           </button>
 
           {showWarehouseMenu && (
@@ -212,53 +260,115 @@ export const Topbar: React.FC<TopbarProps> = ({
               style={{
                 position: 'absolute',
                 right: 0,
-                top: '110%',
+                top: 'calc(100% + 6px)',
                 background: '#FFFFFF',
                 border: '1px solid #E2E8F0',
-                borderRadius: 10,
-                boxShadow: 'var(--shadow-lg)',
+                borderRadius: 12,
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
                 padding: '6px',
-                minWidth: 190,
-                zIndex: 100,
+                minWidth: 220,
+                zIndex: 120,
+                animation: 'scaleUp 0.15s ease-out',
               }}
             >
+              <div
+                style={{
+                  padding: '6px 10px 8px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: '#94A3B8',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  borderBottom: '1px solid #F1F5F9',
+                  marginBottom: 4,
+                }}
+              >
+                Select Storage Facility
+              </div>
+
               <div
                 onClick={() => {
                   onSelectWarehouse('all');
                   setShowWarehouseMenu(false);
                 }}
                 style={{
-                  padding: '8px 12px',
-                  borderRadius: 6,
+                  padding: '9px 12px',
+                  borderRadius: 8,
                   fontSize: 13,
-                  fontWeight: selectedWarehouse === 'all' ? 600 : 500,
+                  fontWeight: selectedWarehouse === 'all' ? 700 : 500,
                   color: selectedWarehouse === 'all' ? '#6D28D9' : '#334155',
                   background: selectedWarehouse === 'all' ? '#F5F3FF' : 'transparent',
                   cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  transition: 'background 0.12s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedWarehouse !== 'all') e.currentTarget.style.background = '#F8FAFC';
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedWarehouse !== 'all') e.currentTarget.style.background = 'transparent';
                 }}
               >
-                All Warehouses
-              </div>
-              {warehouses.map((w) => (
-                <div
-                  key={w.id}
-                  onClick={() => {
-                    onSelectWarehouse(w.id);
-                    setShowWarehouseMenu(false);
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    fontSize: 13,
-                    fontWeight: selectedWarehouse === w.id ? 600 : 500,
-                    color: selectedWarehouse === w.id ? '#6D28D9' : '#334155',
-                    background: selectedWarehouse === w.id ? '#F5F3FF' : 'transparent',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {w.name}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Globe size={15} color={selectedWarehouse === 'all' ? '#6D28D9' : '#64748B'} />
+                  <span>All Warehouses</span>
                 </div>
-              ))}
+                {selectedWarehouse === 'all' && <Check size={15} color="#6D28D9" strokeWidth={2.5} />}
+              </div>
+
+              {warehouses.map((w) => {
+                const isSelected = selectedWarehouse === w.id;
+                return (
+                  <div
+                    key={w.id}
+                    onClick={() => {
+                      onSelectWarehouse(w.id);
+                      setShowWarehouseMenu(false);
+                    }}
+                    style={{
+                      padding: '9px 12px',
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: isSelected ? 700 : 500,
+                      color: isSelected ? '#6D28D9' : '#334155',
+                      background: isSelected ? '#F5F3FF' : 'transparent',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'background 0.12s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) e.currentTarget.style.background = '#F8FAFC';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected) e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Building size={15} color={isSelected ? '#6D28D9' : '#64748B'} />
+                      <span>{w.name}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          color: '#64748B',
+                          background: '#F1F5F9',
+                          padding: '1px 5px',
+                          borderRadius: 4,
+                        }}
+                      >
+                        {w.code}
+                      </span>
+                      {isSelected && <Check size={15} color="#6D28D9" strokeWidth={2.5} />}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -309,18 +419,19 @@ export const Topbar: React.FC<TopbarProps> = ({
         </div>
 
         {/* User Profile Dropdown */}
-        <div style={{ position: 'relative' }}>
+        <div ref={profileRef} style={{ position: 'relative' }}>
           <button
-            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            onClick={handleToggleProfile}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 10,
               padding: '4px 8px 4px 4px',
-              border: '1px solid transparent',
+              border: showProfileMenu ? '1px solid #C4B5FD' : '1px solid transparent',
               borderRadius: 24,
-              background: 'transparent',
+              background: showProfileMenu ? '#F5F3FF' : 'transparent',
               cursor: 'pointer',
+              transition: 'all 0.15s ease',
             }}
           >
             <div
@@ -344,7 +455,14 @@ export const Topbar: React.FC<TopbarProps> = ({
               <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>{user.name}</div>
               <div style={{ fontSize: 11, color: '#64748B' }}>{user.role}</div>
             </div>
-            <ChevronDown size={14} color="#94A3B8" />
+            <ChevronDown
+              size={14}
+              color="#94A3B8"
+              style={{
+                transform: showProfileMenu ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease',
+              }}
+            />
           </button>
 
           {showProfileMenu && (
@@ -352,19 +470,25 @@ export const Topbar: React.FC<TopbarProps> = ({
               style={{
                 position: 'absolute',
                 right: 0,
-                top: '110%',
+                top: 'calc(100% + 6px)',
                 background: '#FFFFFF',
                 border: '1px solid #E2E8F0',
-                borderRadius: 10,
-                boxShadow: 'var(--shadow-lg)',
+                borderRadius: 12,
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
                 padding: '6px',
-                minWidth: 200,
-                zIndex: 100,
+                minWidth: 220,
+                zIndex: 120,
+                animation: 'scaleUp 0.15s ease-out',
               }}
             >
-              <div style={{ padding: '8px 12px', borderBottom: '1px solid #F1F5F9' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{user.name}</div>
-                <div style={{ fontSize: 11, color: '#64748B' }}>{user.email}</div>
+              <div style={{ padding: '10px 12px', borderBottom: '1px solid #F1F5F9' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>{user.name}</div>
+                <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 1 }}>{user.email}</div>
+                <div style={{ marginTop: 6 }}>
+                  <span className="badge badge-purple" style={{ fontSize: 10.5, padding: '2px 8px' }}>
+                    {user.role}
+                  </span>
+                </div>
               </div>
 
               <div
@@ -375,16 +499,20 @@ export const Topbar: React.FC<TopbarProps> = ({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 12px',
-                  borderRadius: 6,
+                  gap: 10,
+                  padding: '9px 12px',
+                  borderRadius: 8,
                   fontSize: 13,
                   color: '#334155',
                   cursor: 'pointer',
+                  marginTop: 4,
+                  transition: 'background 0.12s ease',
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#F8FAFC')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
-                <UserIcon size={15} />
-                <span>My Profile</span>
+                <UserIcon size={16} color="#6D28D9" />
+                <span>My Profile & Settings</span>
               </div>
 
               <div
@@ -395,16 +523,19 @@ export const Topbar: React.FC<TopbarProps> = ({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 12px',
-                  borderRadius: 6,
+                  gap: 10,
+                  padding: '9px 12px',
+                  borderRadius: 8,
                   fontSize: 13,
                   color: '#334155',
                   cursor: 'pointer',
+                  transition: 'background 0.12s ease',
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#F8FAFC')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
-                <ShieldCheck size={15} />
-                <span>ERP Permissions</span>
+                <ShieldCheck size={16} color="#10B981" />
+                <span>Reordering Policies</span>
               </div>
 
               <div
@@ -419,17 +550,22 @@ export const Topbar: React.FC<TopbarProps> = ({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 12px',
-                  borderRadius: 6,
+                  gap: 10,
+                  padding: '9px 12px',
+                  borderRadius: 8,
                   fontSize: 13,
+                  fontWeight: 600,
                   color: '#EF4444',
                   cursor: 'pointer',
                   borderTop: '1px solid #F1F5F9',
+                  marginTop: 4,
+                  transition: 'background 0.12s ease',
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#FEF2F2')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
-                <LogOut size={15} />
-                <span>Logout</span>
+                <LogOut size={16} color="#EF4444" />
+                <span>Sign Out</span>
               </div>
             </div>
           )}

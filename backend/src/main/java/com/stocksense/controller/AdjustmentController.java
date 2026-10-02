@@ -73,7 +73,7 @@ public class AdjustmentController {
      * Validate adjustment — MANAGER only.
      * Enforced with @PreAuthorize AND service-layer check.
      */
-    @PatchMapping("/{documentId}/validate")
+    @RequestMapping(value = "/{documentId}/validate", method = {RequestMethod.POST, RequestMethod.PATCH})
     @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ApiResponse<DocumentResponse>> validateAdjustment(
             @PathVariable UUID documentId,

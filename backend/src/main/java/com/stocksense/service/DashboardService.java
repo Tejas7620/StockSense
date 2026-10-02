@@ -87,11 +87,16 @@ public class DashboardService {
                         .build())
                 .collect(Collectors.toList());
 
+        long totalStock = allStock.stream().mapToLong(Stock::getQuantityOnHand).sum();
+
         return DashboardResponse.builder()
                 .totalProducts(totalProducts)
+                .totalStock(totalStock)
                 .totalStockValue(totalStockValue)
                 .lowStockCount(lowStockCount)
                 .outOfStockCount(outOfStockCount)
+                .lowStockProducts(lowStockCount)
+                .outOfStockProducts(outOfStockCount)
                 .pendingReceipts(pendingReceipts)
                 .pendingDeliveries(pendingDeliveries)
                 .pendingTransfers(pendingTransfers)
